@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from .models import Comment, Category, Post
+from .forms import CommentForm
 
 
 def blog_index(request):
@@ -13,8 +14,33 @@ def blog_index(request):
     return render(request, "blog_index.html", context)
 
 
+def blog_detail(request, pk):
+    post = Post.objects.get(pk=pk)
+    form = CommentForm()
+    # проверка если метод который пришел с реквеста ПОСТ, т.е. отправляет данные, то создаем экземпляр формы
+    # и записываем данные кот. пришли к нам с ПОСТа
+    # Затем проверяем валидность формы(все поля заполнены правильно), тогда создаем экземпляр класса коммент,
+    # сохраняя в нашу БД
+    if request.method == "POST":
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = Comment(
+                author=form.cleaned_data['author'],
+                body=form.cleaned_data['body'],
+                post=post
+            )
+            comment.save()
+    comments = Comment.objects.filter(post=post)
+    context = {
+        "post": post,
+        "comments": comments,
+        'form': form
+    }
+    return render(request, "blog_detail.html", context)
+
+
 def blog_category(request, category):
-    posts = Post.object.filter(
+    posts = Post.objects.filter(
         categories__name__contains=category
     ).order_by('-created_on')
     # Аргумент фильтра сообщает Django, какие условия должны быть выполнены для извлечения объекта.
@@ -27,13 +53,3 @@ def blog_category(request, category):
         "posts": posts
     }
     return render(request, "blog_category.html", context)
-
-
-def blog_detail(requst, pk):
-    post = Post.objects.get(pk=pk)
-    comments = Comment.objects.filter(post=post)
-    context = {
-        "post": post,
-        "comments": comments,
-    }
-    return render(requst, "blog_detail.html", context)
